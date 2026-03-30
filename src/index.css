@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+/* Fondo base de la app */
+body {
+  background-color: #030712;
+  color: white;
+}
+
+/* Efecto de brillo cyan para elementos destacados */
+.glow-cyan {
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+}
+
+.glow-cyan-sm {
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.2);
+}
+
+/* Gradiente de texto cyan */
+.text-gradient-cyan {
+  background: linear-gradient(135deg, #00d4ff, #0099cc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Borde con brillo */
+.border-glow {
+  border: 1px solid rgba(0, 212, 255, 0.3);
+}

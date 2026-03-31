@@ -11,8 +11,7 @@ const apiClient = axios.create({
   baseURL: BASE_URL,
   params: {
     key: API_KEY,
-    exclude_additions: true, // excluye DLCs y contenido adicional
-    tags_exclude: 'adult,nsfw,hentai,pornographic', // excluye tags +18
+    exclude_additions: true,
   },
 })
 
@@ -48,11 +47,12 @@ export const getTrendingGames = async () => {
     params: {
       ordering: '-added',
       page_size: 8,
+      metacritic: '60,100',
+      platforms: '4,18,187,1,186,7',
     },
   })
   return data.results
 }
-
 // Trae todos los géneros disponibles en RAWG
 export const getGenres = async () => {
   const { data } = await apiClient.get('/genres')
@@ -90,18 +90,22 @@ export const getUpcomingGames = async () => {
 
 // Juegos aleatorios para recomendaciones
 export const getRandomGames = async () => {
-  // Página aleatoria entre 1 y 20 para variar los resultados
-  const randomPage = Math.floor(Math.random() * 20) + 1
+  const randomPage = Math.floor(Math.random() * 10) + 1
   const { data } = await apiClient.get<PaginatedResponse<Game>>('/games', {
     params: {
       ordering: '-rating',
       page_size: 4,
       page: randomPage,
+      // Solo juegos con metacritic alto — descarta juegos de baja calidad y +18
+      metacritic: '60,100',
+      // Solo estas plataformas mainstream — descarta plataformas de contenido adulto
+      platforms: '4,18,187,1,186,7',
+      // Excluye tags de contenido adulto
+      exclude_additions: true,
     },
   })
   return data.results
 }
-
 // Trae los screenshots de un juego
 export const getGameScreenshots = async (slug: string) => {
   const { data } = await apiClient.get(`/games/${slug}/screenshots`)

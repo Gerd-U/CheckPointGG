@@ -17,6 +17,7 @@ interface UserProfile {
   id: string
   username: string
   bio: string
+  avatar?: string // URL o emoji elegido por el usuario
 }
 
 interface UserState {

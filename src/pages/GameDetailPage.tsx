@@ -1,135 +1,226 @@
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useEffect, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { getGameDetail, getGameScreenshots } from '../services/rawgApi'
+import { useUserStore } from '../store/useUserStore'
+import ScreenshotGallery from '../components/ScreenshotGallery'
+import ReviewForm from '../components/ReviewForm'
+import FadeIn from '../components/FadeIn'
+import type { Game } from '../types'
 
 interface Screenshot {
   id: number
   image: string
 }
 
-interface ScreenshotGalleryProps {
-  screenshots: Screenshot[]
-}
+const GameDetailPage = () => {
+  const { slug } = useParams<{ slug: string }>()
+  const navigate = useNavigate()
+  const { isFavorite, toggleFavorite, isLoggedIn } = useUserStore()
 
-const ScreenshotGallery = ({ screenshots }: ScreenshotGalleryProps) => {
-  const [selected, setSelected] = useState<Screenshot | null>(null)
+  const [game, setGame] = useState<Game | null>(null)
+  const [screenshots, setScreenshots] = useState<Screenshot[]>([])
+  const [loading, setLoading] = useState(true)
 
-  if (screenshots.length === 0) return null
+  useEffect(() => {
+    if (!slug) return
+    const fetchData = async () => {
+      setLoading(true)
+      try {
+        const [gameData, screenshotsData] = await Promise.all([
+          getGameDetail(slug),
+          getGameScreenshots(slug),
+        ])
+        setGame(gameData)
+        setScreenshots(screenshotsData)
+      } catch {
+        navigate('/404')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [slug, navigate])
 
-  const currentIndex = screenshots.findIndex((s) => s.id === selected?.id)
-
-  const goNext = () => {
-    const nextIndex = (currentIndex + 1) % screenshots.length
-    setSelected(screenshots[nextIndex])
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-20 px-4 sm:px-6" style={{ backgroundColor: '#030712' }}>
+        <div className="max-w-5xl mx-auto space-y-6 animate-pulse">
+          <div className="h-64 sm:h-96 rounded-2xl" style={{ backgroundColor: '#0a0f1e' }} />
+          <div className="h-8 w-1/2 rounded-xl" style={{ backgroundColor: '#0a0f1e' }} />
+          <div className="h-4 w-1/3 rounded-xl" style={{ backgroundColor: '#0a0f1e' }} />
+        </div>
+      </div>
+    )
   }
 
-  const goPrev = () => {
-    const prevIndex = (currentIndex - 1 + screenshots.length) % screenshots.length
-    setSelected(screenshots[prevIndex])
-  }
+  if (!game) return null
+
+  const favorite = isFavorite(game.id)
 
   return (
-    <div className="space-y-4">
+    <div className="min-h-screen pt-20 pb-16 px-4 sm:px-6" style={{ backgroundColor: '#030712' }}>
+      <div className="max-w-5xl mx-auto space-y-8">
 
-      {/* Título */}
-      <div className="flex items-center gap-3">
-        <div className="w-1 h-6 rounded-full" style={{ backgroundColor: '#00d4ff' }} />
-        <h3 className="text-white font-bold text-lg">Screenshots</h3>
-      </div>
+        {/* Hero imagen */}
+        <FadeIn direction="down">
+          <div className="relative h-56 sm:h-96 rounded-2xl overflow-hidden">
+            {game.background_image ? (
+              <img
+                src={game.background_image}
+                alt={game.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-6xl"
+                style={{ backgroundColor: '#0a0f1e' }}>
+                🎮
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#030712] via-transparent to-transparent" />
+          </div>
+        </FadeIn>
 
-      {/* Grid de miniaturas */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {screenshots.slice(0, 6).map((screenshot, i) => (
-          <motion.div
-            key={screenshot.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.07 }}
-            onClick={() => setSelected(screenshot)}
-            className="relative aspect-video rounded-xl overflow-hidden cursor-pointer group"
-            style={{ border: '1px solid rgba(0,212,255,0.1)' }}
-          >
-            <img
-              src={screenshot.image}
-              alt={`Screenshot ${i + 1}`}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 flex items-center justify-center">
-              <span className="text-white text-2xl opacity-0 group-hover:opacity-100 transition-opacity">
-                🔍
-              </span>
+        {/* Info principal */}
+        <FadeIn>
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div className="space-y-2">
+                <h1 className="text-3xl sm:text-4xl font-black text-white">{game.name}</h1>
+
+                {/* Géneros */}
+                <div className="flex flex-wrap gap-2">
+                  {game.genres?.map((genre) => (
+                    <span
+                      key={genre.id}
+                      className="text-xs px-3 py-1 rounded-full"
+                      style={{
+                        backgroundColor: 'rgba(0,212,255,0.08)',
+                        color: 'rgba(0,212,255,0.7)',
+                        border: '1px solid rgba(0,212,255,0.15)',
+                      }}
+                    >
+                      {genre.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Botón favorito */}
+              <motion.button
+                onClick={() => { if (isLoggedIn) toggleFavorite(game) }}
+                whileTap={{ scale: 0.9 }}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm shrink-0 transition-all"
+                style={{
+                  backgroundColor: favorite ? 'rgba(239,68,68,0.15)' : 'rgba(0,212,255,0.08)',
+                  border: `1px solid ${favorite ? 'rgba(239,68,68,0.3)' : 'rgba(0,212,255,0.2)'}`,
+                  color: favorite ? '#ef4444' : '#00d4ff',
+                }}
+              >
+                {favorite ? '❤️ En favoritos' : '🤍 Agregar a favoritos'}
+              </motion.button>
             </div>
-          </motion.div>
-        ))}
-      </div>
 
-      {/* Lightbox */}
-      <AnimatePresence>
-        {selected && (
-          // Overlay — click fuera cierra
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setSelected(null)}
-          >
-            {/* Fondo */}
-            <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" />
+            {/* Stats */}
+            <div className="flex flex-wrap gap-4 sm:gap-8">
+              <div>
+                <p className="text-gray-500 text-xs uppercase tracking-wider">Rating</p>
+                <p className="text-white font-black text-xl">
+                  <span style={{ color: '#00d4ff' }}>★</span> {game.rating.toFixed(1)}
+                  <span className="text-gray-600 text-sm font-normal ml-1">
+                    ({game.ratings_count.toLocaleString()})
+                  </span>
+                </p>
+              </div>
 
-            {/* Botón cerrar — encima de todo */}
-            <button
-              onClick={() => setSelected(null)}
-              className="absolute top-6 right-6 w-10 h-10 rounded-full flex items-center justify-center text-white text-lg z-50 transition-colors hover:bg-white/20"
-              style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
-            >
-              ✕
-            </button>
+              {game.metacritic && (
+                <div>
+                  <p className="text-gray-500 text-xs uppercase tracking-wider">Metacritic</p>
+                  <p
+                    className="font-black text-xl"
+                    style={{ color: game.metacritic >= 75 ? '#22c55e' : '#eab308' }}
+                  >
+                    {game.metacritic}
+                  </p>
+                </div>
+              )}
 
-            {/* Flecha izquierda */}
-            <button
-              onClick={(e) => { e.stopPropagation(); goPrev() }}
-              className="absolute left-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center text-white z-50 transition-colors hover:bg-white/20"
-              style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
-            >
-              ←
-            </button>
+              {game.released && (
+                <div>
+                  <p className="text-gray-500 text-xs uppercase tracking-wider">Lanzamiento</p>
+                  <p className="text-white font-semibold">
+                    {new Date(game.released).toLocaleDateString('es-ES', {
+                      year: 'numeric', month: 'long', day: 'numeric',
+                    })}
+                  </p>
+                </div>
+              )}
 
-            {/* Flecha derecha */}
-            <button
-              onClick={(e) => { e.stopPropagation(); goNext() }}
-              className="absolute right-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center text-white z-50 transition-colors hover:bg-white/20"
-              style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
-            >
-              →
-            </button>
+              {game.playtime > 0 && (
+                <div>
+                  <p className="text-gray-500 text-xs uppercase tracking-wider">Tiempo promedio</p>
+                  <p className="text-white font-semibold">{game.playtime}h</p>
+                </div>
+              )}
+            </div>
 
-            {/* Imagen */}
-            <motion.img
-              key={selected.id}
-              src={selected.image}
-              alt="Screenshot"
-              className="relative max-w-4xl w-full rounded-2xl z-40"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-              onClick={(e) => e.stopPropagation()}
-            />
+            {/* Plataformas */}
+            {game.platforms && (
+              <div className="flex flex-wrap gap-2">
+                {game.platforms.map((p) => (
+                  <span
+                    key={p.platform.id}
+                    className="text-xs px-3 py-1 rounded-lg"
+                    style={{
+                      backgroundColor: '#0a0f1e',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      color: '#9ca3af',
+                    }}
+                  >
+                    {p.platform.name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </FadeIn>
 
-            {/* Contador */}
+        {/* Descripción */}
+        {game.description_raw && (
+          <FadeIn delay={0.1}>
             <div
-              className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full text-sm text-white z-50"
-              style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
+              className="rounded-2xl p-6 space-y-3"
+              style={{
+                backgroundColor: '#0a0f1e',
+                border: '1px solid rgba(0,212,255,0.08)',
+              }}
             >
-              {currentIndex + 1} / {screenshots.length}
+              <div className="flex items-center gap-3">
+                <div className="w-1 h-6 rounded-full" style={{ backgroundColor: '#00d4ff' }} />
+                <h2 className="text-white font-bold text-lg">Descripción</h2>
+              </div>
+              <p className="text-gray-400 text-sm leading-relaxed line-clamp-6">
+                {game.description_raw}
+              </p>
             </div>
-
-          </motion.div>
+          </FadeIn>
         )}
-      </AnimatePresence>
 
+        {/* Screenshots */}
+        {screenshots.length > 0 && (
+          <FadeIn delay={0.15}>
+            <ScreenshotGallery screenshots={screenshots} />
+          </FadeIn>
+        )}
+
+        {/* Formulario de reseña */}
+        <FadeIn delay={0.2}>
+          <ReviewForm game={game} />
+        </FadeIn>
+
+      </div>
     </div>
   )
 }
 
-export default ScreenshotGallery
+export default GameDetailPage

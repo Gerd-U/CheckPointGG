@@ -14,7 +14,7 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/search" element={<SearchPage />} />
-        <Route path="/game/:slug" element={<GameDetailPage screenshots={[]} />} />
+        <Route path="/game/:slug" element={<GameDetailPage/>} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         {/* Captura cualquier ruta que no exista */}

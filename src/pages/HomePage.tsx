@@ -1,64 +1,350 @@
-import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { getTrendingGames } from '../services/rawgApi'
-import GameCard from '../components/GameCard'
-import FadeIn from '../components/FadeIn'
-import type { Game } from '../types'
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  getTrendingGames,
+  getTopRatedGames,
+  getUpcomingGames,
+  getRandomGames,
+} from "../services/rawgApi";
+import GameCard from "../components/GameCard";
+import FadeIn from "../components/FadeIn";
+import type { Game } from "../types";
 
-const HomePage = () => {
-  const navigate = useNavigate()
-  const [games, setGames] = useState<Game[]>([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
+// ── Skeleton placeholder ──────────────────────────────────────────────────────
+const SkeletonCard = () => (
+  <div
+    className="rounded-2xl overflow-hidden animate-pulse"
+    style={{ backgroundColor: "#0a0f1e" }}
+  >
+    <div className="h-48" style={{ backgroundColor: "#0f1629" }} />
+    <div className="p-4 space-y-3">
+      <div
+        className="h-4 rounded-lg w-3/4"
+        style={{ backgroundColor: "#0f1629" }}
+      />
+      <div
+        className="h-3 rounded-lg w-1/2"
+        style={{ backgroundColor: "#0f1629" }}
+      />
+    </div>
+  </div>
+);
 
+// ── Sección reutilizable ──────────────────────────────────────────────────────
+interface SectionProps {
+  title: string;
+  subtitle: string;
+  linkTo: string;
+  games: Game[];
+  loading: boolean;
+  delay?: number;
+}
+
+const Section = ({
+  title,
+  subtitle,
+  linkTo,
+  games,
+  loading,
+  delay = 0,
+}: SectionProps) => (
+  <FadeIn delay={delay}>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-1 h-8 rounded-full"
+              style={{ backgroundColor: "#00d4ff" }}
+            />
+            <h2 className="text-3xl font-black text-white">{title}</h2>
+          </div>
+          <p className="text-gray-500 text-sm pl-4">{subtitle}</p>
+        </div>
+        <Link
+          to={linkTo}
+          className="text-sm hover:opacity-70 transition-opacity"
+          style={{ color: "#00d4ff" }}
+        >
+          Ver todos →
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {loading
+          ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
+          : games.slice(0, 4).map((game, i) => (
+              <motion.div
+                key={game.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.07 }}
+              >
+                <GameCard game={game} />
+              </motion.div>
+            ))}
+      </div>
+    </div>
+  </FadeIn>
+);
+
+// ── Carrusel hero ─────────────────────────────────────────────────────────────
+const HeroCarousel = ({ games }: { games: Game[] }) => {
+  const [current, setCurrent] = useState(0);
+
+  // Cambia de slide automáticamente cada 4 segundos
   useEffect(() => {
-    const fetchGames = async () => {
-      try {
-        const data = await getTrendingGames()
-        setGames(data)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchGames()
-  }, [])
+    if (games.length === 0) return;
+    const interval = setInterval(() => {
+      setCurrent((prev) => (prev + 1) % games.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [games]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (search.trim()) navigate(`/search?q=${encodeURIComponent(search)}`)
-  }
+  if (games.length === 0) return null;
+
+  const game = games[current];
 
   return (
-    <div className="min-h-screen pt-20" style={{ backgroundColor: '#030712' }}>
+    <div className="relative h-[70vh] overflow-hidden rounded-3xl">
+      {/* Imagen de fondo con transición */}
+      <AnimatePresence mode="wait">
+        <motion.img
+          key={game.id}
+          src={game.background_image}
+          alt={game.name}
+          className="absolute inset-0 w-full h-full object-cover"
+          initial={{ opacity: 0, scale: 1.05 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.7 }}
+        />
+      </AnimatePresence>
 
+      {/* Gradientes */}
+      <div className="absolute inset-0 bg-gradient-to-t from-[#030712] via-[#030712]/40 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#030712]/80 to-transparent" />
+
+      {/* Partículas decorativas */}
+      <div className="absolute inset-0 pointer-events-none">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1 h-1 rounded-full"
+            style={{
+              backgroundColor: "#00d4ff",
+              left: `${20 + i * 30}%`,
+              top: `${30 + i * 20}%`,
+            }}
+            animate={{ y: [0, -20, 0], opacity: [0.3, 1, 0.3] }}
+            transition={{ duration: 2 + i, repeat: Infinity, delay: i * 0.5 }}
+          />
+        ))}
+      </div>
+
+      {/* Contenido del slide */}
+      <div className="absolute inset-0 flex items-end p-8 sm:p-12">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={game.id}
+            className="space-y-4 max-w-xl"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.5 }}
+          >
+            {/* Géneros */}
+            <div className="flex flex-wrap gap-2">
+              {game.genres?.slice(0, 2).map((genre) => (
+                <span
+                  key={genre.id}
+                  className="text-xs px-3 py-1 rounded-full"
+                  style={{
+                    backgroundColor: "rgba(0,212,255,0.15)",
+                    color: "#00d4ff",
+                    border: "1px solid rgba(0,212,255,0.3)",
+                  }}
+                >
+                  {genre.name}
+                </span>
+              ))}
+            </div>
+
+            {/* Título */}
+            <h2 className="text-4xl sm:text-6xl font-black text-white leading-tight">
+              {game.name}
+            </h2>
+
+            {/* Rating */}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span style={{ color: "#00d4ff" }} className="text-xl">
+                  ★
+                </span>
+                <span className="text-white font-bold text-xl">
+                  {game.rating.toFixed(1)}
+                </span>
+              </div>
+              {game.metacritic && (
+                <span
+                  className="px-3 py-1 rounded-lg font-black text-sm"
+                  style={{
+                    backgroundColor: "rgba(34,197,94,0.2)",
+                    color: "#22c55e",
+                    border: "1px solid rgba(34,197,94,0.4)",
+                  }}
+                >
+                  Metacritic {game.metacritic}
+                </span>
+              )}
+            </div>
+
+            {/* Botón */}
+            <Link
+              to={`/game/${game.slug}`}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-black transition-all hover:opacity-90 glow-cyan"
+              style={{ backgroundColor: "#00d4ff" }}
+            >
+              Ver juego →
+            </Link>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Indicadores */}
+      <div className="absolute bottom-6 right-8 flex gap-2">
+        {games.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setCurrent(i)}
+            className="transition-all duration-300 rounded-full"
+            style={{
+              width: i === current ? "24px" : "8px",
+              height: "8px",
+              backgroundColor:
+                i === current ? "#00d4ff" : "rgba(255,255,255,0.3)",
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ── HomePage ──────────────────────────────────────────────────────────────────
+const HomePage = () => {
+  const navigate = useNavigate();
+  const [search, setSearch] = useState("");
+
+  const [trending, setTrending] = useState<Game[]>([]);
+  const [topRated, setTopRated] = useState<Game[]>([]);
+  const [upcoming, setUpcoming] = useState<Game[]>([]);
+  const [recommended, setRecommended] = useState<Game[]>([]);
+
+  const [loadingTrending, setLoadingTrending] = useState(true);
+  const [loadingTop, setLoadingTop] = useState(true);
+  const [loadingUpcoming, setLoadingUpcoming] = useState(true);
+  const [loadingRecommended, setLoadingRecommended] = useState(true);
+
+  useEffect(() => {
+    // Trending para el grid
+    getTrendingGames()
+      .then(setTrending)
+      .finally(() => setLoadingTrending(false));
+
+    // Top Rated para el carrusel destacados
+    getTopRatedGames()
+      .then(setTopRated)
+      .finally(() => setLoadingTop(false));
+
+    getUpcomingGames()
+      .then(setUpcoming)
+      .finally(() => setLoadingUpcoming(false));
+
+    getRandomGames()
+      .then(setRecommended)
+      .finally(() => setLoadingRecommended(false));
+  }, []);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (search.trim()) navigate(`/search?q=${encodeURIComponent(search)}`);
+  };
+
+  const refreshRecommended = () => {
+    setLoadingRecommended(true);
+    getRandomGames()
+      .then(setRecommended)
+      .finally(() => setLoadingRecommended(false));
+  };
+
+  return (
+    <div className="min-h-screen pt-20" style={{ backgroundColor: "#030712" }}>
       {/* ── HERO ─────────────────────────────────────────────────── */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-
-        {/* Fondo decorativo */}
+      <section className="relative flex items-center justify-center overflow-hidden py-20 px-6">
+        {/* Fondo dinámico */}
         <div className="absolute inset-0 pointer-events-none">
-          <div
-            className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full opacity-10"
-            style={{ background: 'radial-gradient(circle, #00d4ff, transparent 70%)' }}
+          <motion.div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(0,212,255,0.08), transparent 70%)",
+            }}
+            animate={{ scale: [1, 1.1, 1] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(0,212,255,0.05), transparent 70%)",
+            }}
+            animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(0,212,255,0.05), transparent 70%)",
+            }}
+            animate={{ x: [0, -20, 0], y: [0, 20, 0] }}
+            transition={{
+              duration: 5,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 1,
+            }}
           />
           <div
             className="absolute inset-0 opacity-5"
             style={{
-              backgroundImage: 'linear-gradient(rgba(0,212,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.3) 1px, transparent 1px)',
-              backgroundSize: '60px 60px',
+              backgroundImage:
+                "linear-gradient(rgba(0,212,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.3) 1px, transparent 1px)",
+              backgroundSize: "60px 60px",
             }}
           />
         </div>
 
-        <div className="relative max-w-4xl mx-auto px-6 text-center space-y-8">
-
-          {/* Cada elemento entra con un delay diferente para efecto escalonado */}
+        <div className="relative max-w-4xl mx-auto text-center space-y-8">
           <FadeIn delay={0.1} direction="down">
             <div
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm border-glow"
-              style={{ backgroundColor: 'rgba(0,212,255,0.05)' }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm"
+              style={{
+                backgroundColor: "rgba(0,212,255,0.05)",
+                border: "1px solid rgba(0,212,255,0.2)",
+              }}
             >
-              <span className="w-2 h-2 rounded-full bg-[#00d4ff] animate-pulse" />
-              <span className="text-[#00d4ff]">+500,000 juegos indexados</span>
+              <motion.span
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: "#00d4ff" }}
+                animate={{ opacity: [1, 0.3, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              />
+              <span style={{ color: "#00d4ff" }}>
+                +500,000 juegos indexados
+              </span>
             </div>
           </FadeIn>
 
@@ -66,7 +352,15 @@ const HomePage = () => {
             <h1 className="text-6xl sm:text-8xl font-black leading-none tracking-tight">
               TU PRÓXIMO
               <br />
-              <span className="text-gradient-cyan">JUEGO</span>
+              <span
+                style={{
+                  background: "linear-gradient(135deg, #00d4ff, #0099cc)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                JUEGO
+              </span>
               <br />
               TE ESPERA
             </h1>
@@ -74,92 +368,176 @@ const HomePage = () => {
 
           <FadeIn delay={0.3}>
             <p className="text-gray-400 text-lg max-w-xl mx-auto">
-              Descubre, reseña y califica videojuegos. La comunidad gamer que te ayuda a decidir qué jugar.
+              Descubre, reseña y califica videojuegos. La comunidad gamer que te
+              ayuda a decidir qué jugar.
             </p>
           </FadeIn>
 
           <FadeIn delay={0.4}>
-            <form onSubmit={handleSearch} className="flex max-w-lg mx-auto gap-3">
+            <form
+              onSubmit={handleSearch}
+              className="flex max-w-lg mx-auto gap-3"
+            >
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Busca un juego..."
-                className="flex-1 px-5 py-4 rounded-2xl text-white placeholder-gray-600 focus:outline-none border-glow"
-                style={{ backgroundColor: '#0a0f1e' }}
+                className="flex-1 px-5 py-4 rounded-2xl text-white placeholder-gray-600 focus:outline-none transition-all"
+                style={{
+                  backgroundColor: "#0a0f1e",
+                  border: "1px solid rgba(0,212,255,0.2)",
+                }}
+                onFocus={(e) =>
+                  (e.target.style.borderColor = "rgba(0,212,255,0.5)")
+                }
+                onBlur={(e) =>
+                  (e.target.style.borderColor = "rgba(0,212,255,0.2)")
+                }
               />
-              <button
+              <motion.button
                 type="submit"
-                className="px-6 py-4 rounded-2xl font-bold text-black transition-all hover:opacity-90 glow-cyan"
-                style={{ backgroundColor: '#00d4ff' }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.97 }}
+                className="px-6 py-4 rounded-2xl font-bold text-black glow-cyan"
+                style={{ backgroundColor: "#00d4ff" }}
               >
                 Buscar
-              </button>
+              </motion.button>
             </form>
           </FadeIn>
 
           <FadeIn delay={0.5}>
             <div className="flex flex-wrap justify-center gap-2">
-              {['Action', 'RPG', 'Indie', 'Strategy', 'Horror', 'Sports'].map((genre) => (
-                <Link
-                  key={genre}
-                  to={`/search?genres=${genre.toLowerCase()}`}
-                  className="px-4 py-1.5 rounded-full text-sm text-gray-400 hover:text-[#00d4ff] transition-colors border-glow"
-                  style={{ backgroundColor: 'rgba(0,212,255,0.05)' }}
-                >
-                  {genre}
-                </Link>
-              ))}
+              {["Action", "RPG", "Indie", "Strategy", "Horror", "Sports"].map(
+                (genre) => (
+                  <Link
+                    key={genre}
+                    to={`/search?genres=${genre.toLowerCase()}`}
+                    className="px-4 py-1.5 rounded-full text-sm text-gray-400 hover:text-[#00d4ff] transition-colors"
+                    style={{
+                      backgroundColor: "rgba(0,212,255,0.05)",
+                      border: "1px solid rgba(0,212,255,0.1)",
+                    }}
+                  >
+                    {genre}
+                  </Link>
+                ),
+              )}
             </div>
           </FadeIn>
-
         </div>
       </section>
 
-      {/* ── TRENDING ─────────────────────────────────────────────── */}
-      <section className="max-w-7xl mx-auto px-6 py-20 space-y-8">
-
-        <FadeIn direction="left">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <div className="flex items-center gap-3">
-                <div className="w-1 h-8 rounded-full" style={{ backgroundColor: '#00d4ff' }} />
-                <h2 className="text-3xl font-black text-white">TRENDING</h2>
-              </div>
-              <p className="text-gray-500 text-sm pl-4">Los más populares del momento</p>
+      {/* ── CARRUSEL (Top Rated) ──────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-6 pb-16">
+        <FadeIn delay={0.2}>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-1 h-8 rounded-full"
+                style={{ backgroundColor: "#00d4ff" }}
+              />
+              <h2 className="text-3xl font-black text-white">DESTACADOS</h2>
             </div>
-            <Link to="/search" className="text-sm text-[#00d4ff] hover:opacity-70 transition-opacity">
-              Ver todos →
-            </Link>
+            <p className="text-gray-500 text-sm pl-4">
+              Los mejor valorados de todos los tiempos
+            </p>
+            {loadingTop ? (
+              <div
+                className="h-[70vh] rounded-3xl animate-pulse"
+                style={{ backgroundColor: "#0a0f1e" }}
+              />
+            ) : (
+              <HeroCarousel games={topRated.slice(0, 5)} />
+            )}
+          </div>
+        </FadeIn>
+      </div>
+
+      {/* ── SECCIONES ─────────────────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-6 pb-20 space-y-20">
+        {/* Trending */}
+        <Section
+          title="TRENDING"
+          subtitle="Los más populares del momento"
+          linkTo="/search?ordering=-added"
+          games={trending}
+          loading={loadingTrending}
+          delay={0.1}
+        />
+
+        {/* Recomendaciones */}
+        <FadeIn delay={0.2}>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-1 h-8 rounded-full"
+                    style={{ backgroundColor: "#00d4ff" }}
+                  />
+                  <h2 className="text-3xl font-black text-white">PARA TI</h2>
+                </div>
+                <p className="text-gray-500 text-sm pl-4">
+                  Recomendaciones que cambian cada visita
+                </p>
+              </div>
+              <motion.button
+                onClick={refreshRecommended}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
+                style={{
+                  backgroundColor: "rgba(0,212,255,0.08)",
+                  border: "1px solid rgba(0,212,255,0.2)",
+                  color: "#00d4ff",
+                }}
+              >
+                <motion.span
+                  animate={loadingRecommended ? { rotate: 360 } : { rotate: 0 }}
+                  transition={{
+                    duration: 0.5,
+                    repeat: loadingRecommended ? Infinity : 0,
+                  }}
+                >
+                  🔄
+                </motion.span>
+                Refrescar
+              </motion.button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {loadingRecommended
+                ? Array.from({ length: 4 }).map((_, i) => (
+                    <SkeletonCard key={i} />
+                  ))
+                : recommended.map((game, i) => (
+                    <motion.div
+                      key={game.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.07 }}
+                    >
+                      <GameCard game={game} />
+                    </motion.div>
+                  ))}
+            </div>
           </div>
         </FadeIn>
 
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="rounded-2xl overflow-hidden animate-pulse" style={{ backgroundColor: '#0a0f1e' }}>
-                <div className="h-48" style={{ backgroundColor: '#0f1629' }} />
-                <div className="p-4 space-y-3">
-                  <div className="h-4 rounded-lg w-3/4" style={{ backgroundColor: '#0f1629' }} />
-                  <div className="h-3 rounded-lg w-1/2" style={{ backgroundColor: '#0f1629' }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          // Las cards entran escalonadas una tras otra
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {games.map((game, i) => (
-              <FadeIn key={game.id} delay={i * 0.05} direction="up">
-                <GameCard game={game} />
-              </FadeIn>
-            ))}
-          </div>
-        )}
-
-      </section>
+        {/* Próximos lanzamientos */}
+        <Section
+          title="PRÓXIMOS"
+          subtitle="Lo que viene en los próximos meses"
+          linkTo="/search?ordering=-released&dates=2025-01-01,2026-12-31" // cambia esto
+          games={upcoming}
+          loading={loadingUpcoming}
+          delay={0.3}
+        />
+      </div>
     </div>
-  )
-}
+  );
+};
 
-export default HomePage
+export default HomePage;

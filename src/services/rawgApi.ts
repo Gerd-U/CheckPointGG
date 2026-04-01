@@ -1,12 +1,9 @@
-import axios from 'axios'
-import type { Game, PaginatedResponse } from '../types'
+import axios from "axios"
+import type { Game, PaginatedResponse } from "../types"
 
-//variable de entorno para el api
 const API_KEY = import.meta.env.VITE_RAWG_API_KEY
-const BASE_URL = 'https://api.rawg.io/api'
+const BASE_URL = "https://api.rawg.io/api"
 
-// Instancia de axios con la configuración base
-// Todos los requests que hagamos con apiClient ya llevan la key automáticamente
 const apiClient = axios.create({
   baseURL: BASE_URL,
   params: {
@@ -15,14 +12,19 @@ const apiClient = axios.create({
   },
 })
 
-// Trae una lista de juegos, con búsqueda y filtros opcionales
+// Filtra juegos sin imagen de portada en el frontend
+const withImage = (games: Game[]) =>
+  games.filter((g) => g.background_image && g.background_image !== '')
+
+// Trae una lista de juegos con búsqueda y filtros opcionales
 export const getGames = async (params: {
   search?: string
   genres?: string
   ordering?: string
   platforms?: string
   page?: number
-  page_size?: number  // agrégalo aquí
+  page_size?: number
+  dates?: string
 } = {}) => {
   const { data } = await apiClient.get<PaginatedResponse<Game>>('/games', {
     params: {
@@ -32,7 +34,10 @@ export const getGames = async (params: {
       ...params,
     },
   })
-  return data
+  return {
+    ...data,
+    results: withImage(data.results),
+  }
 }
 
 // Trae el detalle completo de un juego por su slug
@@ -46,13 +51,14 @@ export const getTrendingGames = async () => {
   const { data } = await apiClient.get<PaginatedResponse<Game>>('/games', {
     params: {
       ordering: '-added',
-      page_size: 8,
+      page_size: 16,
       metacritic: '60,100',
       platforms: '4,18,187,1,186,7',
     },
   })
-  return data.results
+  return withImage(data.results).slice(0, 8)
 }
+
 // Trae todos los géneros disponibles en RAWG
 export const getGenres = async () => {
   const { data } = await apiClient.get('/genres')
@@ -65,10 +71,10 @@ export const getTopRatedGames = async () => {
     params: {
       ordering: '-metacritic',
       metacritic: '90,100',
-      page_size: 8,
+      page_size: 16,
     },
   })
-  return data.results
+  return withImage(data.results).slice(0, 8)
 }
 
 // Próximos lanzamientos
@@ -82,10 +88,10 @@ export const getUpcomingGames = async () => {
     params: {
       dates: `${today},${nextYearStr}`,
       ordering: '-added',
-      page_size: 8,
+      page_size: 16,
     },
   })
-  return data.results
+  return withImage(data.results).slice(0, 8)
 }
 
 // Juegos aleatorios para recomendaciones
@@ -94,21 +100,34 @@ export const getRandomGames = async () => {
   const { data } = await apiClient.get<PaginatedResponse<Game>>('/games', {
     params: {
       ordering: '-rating',
-      page_size: 4,
+      page_size: 12,
       page: randomPage,
-      // Solo juegos con metacritic alto — descarta juegos de baja calidad y +18
       metacritic: '60,100',
-      // Solo estas plataformas mainstream — descarta plataformas de contenido adulto
       platforms: '4,18,187,1,186,7',
-      // Excluye tags de contenido adulto
-      exclude_additions: true,
     },
   })
-  return data.results
+  return withImage(data.results).slice(0, 4)
 }
+
 // Trae los screenshots de un juego
 export const getGameScreenshots = async (slug: string) => {
   const { data } = await apiClient.get(`/games/${slug}/screenshots`)
   return data.results as { id: number; image: string }[]
 }
 
+// Trae los trailers de un juego
+export const getGameTrailers = async (slug: string) => {
+  const { data } = await apiClient.get(`/games/${slug}/movies`)
+  return data.results as {
+    id: number
+    name: string
+    preview: string
+    data: { max: string }
+  }[]
+}
+
+// Trae juegos de la misma serie o similares
+export const getSimilarGames = async (slug: string) => {
+  const { data } = await apiClient.get<PaginatedResponse<Game>>(`/games/${slug}/game-series`)
+  return withImage(data.results).slice(0, 6)
+}

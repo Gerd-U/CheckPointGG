@@ -1,0 +1,29 @@
+[
+  {
+    "id": "1",
+    "username": "GamerPro",
+    "email": "gamerpro@checkpointgg.com",
+    "password": "Gamer123!",
+    "bio": "Apasionado de los videojuegos 🎮",
+    "joinedAt": "2024-01-15T00:00:00.000Z",
+    "role": "admin"
+  },
+  {
+    "id": "2",
+    "username": "PixelMaster",
+    "email": "pixel@checkpointgg.com",
+    "password": "Pixel456!",
+    "bio": "Fan de los juegos indie y retro 👾",
+    "joinedAt": "2024-03-20T00:00:00.000Z",
+    "role": "user"
+  },
+  {
+    "id": "3",
+    "username": "NightOwl",
+    "email": "nightowl@checkpointgg.com",
+    "password": "Night789!",
+    "bio": "Gamer nocturno, RPG lover 🌙",
+    "joinedAt": "2024-06-10T00:00:00.000Z",
+    "role": "user"
+  }
+]

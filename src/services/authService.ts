@@ -15,6 +15,7 @@ export interface AuthUser {
   bio: string
   joinedAt: string
   role: string
+  avatar?: string
 }
 
 interface RawUser extends AuthUser {
@@ -98,13 +99,14 @@ export const registerUser = async (
   }
 
   const newUser: AuthUser = {
-    id: crypto.randomUUID(),
-    username: username.trim(),
-    email: email.trim().toLowerCase(),
-    bio: 'Nuevo en CheckPointGG 🎮',
-    joinedAt: new Date().toISOString(),
-    role: 'user',
-  }
+  id: crypto.randomUUID(),
+  username: username.trim(),
+  email: email.trim().toLowerCase(),
+  bio: 'Nuevo en CheckPointGG 🎮',
+  joinedAt: new Date().toISOString(),
+  role: 'user',
+  avatar: '',
+}
 
   return newUser
 }
